@@ -8,6 +8,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const KEY = 'focus-v2', TKEY = 'focus-timer';
 
 /* ---------- state + persistence ---------- */
+let modalPushed = false, ignorePop = 0;
 let state, page = 'Today', sel = null, pending = null, warned = false, tickId = null, timer = null;
 const filters = { owner: 'all', project: 'all', waiting: false };
 const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
@@ -56,7 +57,7 @@ const projectOpts = cur => opts([['', 'No project']].concat(state.projects.filte
 function modal(title, body) {
   const m = $('#modal');
   m.innerHTML = `<div class="modalhead"><h2>${esc(title)}</h2><button data-act="close" aria-label="Close dialog">×</button></div>${body}`;
-  if (!m.open) m.showModal();
+  if (!m.open) { if (!modalPushed) { try { history.pushState({ m: 1, n: (history.state && history.state.n) || 0 }, '', location.href); modalPushed = true; } catch {} } m.showModal(); }
   const a = m.querySelector('[autofocus]'); if (a) a.focus();
 }
 const closeModal = () => { const m = $('#modal'); if (m.open) m.close(); };
@@ -226,6 +227,35 @@ views.Review = () => {
     </div></div>`;
 };
 
+/* ---------- routing: real history so the phone Back button works ---------- */
+const slug = { Today: 'today', Inbox: 'inbox', Priorities: 'tasks', Projects: 'projects', Deadlines: 'deadlines', Team: 'team', Review: 'review' };
+const unslug = Object.fromEntries(Object.entries(slug).map(([k, v]) => [v, k]));
+const hashFor = (p, s) => '#/' + slug[p] + (s ? '/' + s : '');
+function parseHash() { const m = location.hash.match(/^#\/([a-z]+)(?:\/([\w-]+))?/); const p = m && unslug[m[1]]; return p ? { page: p, sel: m[2] || null } : { page: 'Today', sel: null }; }
+const scrolls = {};
+function enter() { const v = $('#view'); v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); }
+function go(p, s = null, o = {}) {
+  if (page === p && sel === s && !o.replace) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  scrolls[hashFor(page, sel)] = window.scrollY;
+  const n = (history.state && history.state.n) || 0, h = hashFor(p, s);
+  try {
+    if (modalPushed) { history.replaceState({ n: n + 1 }, '', h); modalPushed = false; }
+    else if (o.replace) history.replaceState({ n }, '', h);
+    else history.pushState({ n: n + 1 }, '', h);
+  } catch {}
+  page = p; sel = s; enter(); render(); window.scrollTo(0, 0);
+}
+window.addEventListener('popstate', () => {
+  if (ignorePop > 0) { ignorePop--; return; }
+  const m = $('#modal');
+  if (modalPushed) { modalPushed = false; if (m.open) m.close(); }
+  const r = parseHash(); if (r.sel && !C.proj(state, r.sel)) r.sel = null;
+  if (r.page !== page || r.sel !== sel) { scrolls[hashFor(page, sel)] = window.scrollY; page = r.page; sel = r.sel; enter(); render(); window.scrollTo(0, scrolls[hashFor(page, sel)] || 0); }
+});
+$('#modal').addEventListener('close', () => setTimeout(() => {
+  if (!$('#modal').open && modalPushed) { modalPushed = false; ignorePop++; try { history.back(); } catch { ignorePop--; } }
+}, 0));
+
 /* ---------- shell render ---------- */
 const tabs = [['Today', 'Today'], ['Inbox', 'Inbox'], ['Priorities', 'Tasks'], ['Projects', 'Projects'], ['Deadlines', 'Deadlines'], ['Team', 'Team'], ['Review', 'Review']];
 const label = p => (tabs.find(t => t[0] === p) || [p, p])[1];
@@ -318,7 +348,7 @@ const forms = {
   },
   project(f, form) {
     const id = form.dataset.id, v = Object.fromEntries(f);
-    if (id) Object.assign(C.proj(state, id), v); else { const p = { id: C.uid(), invoices: [], ...v }; state.projects.push(p); sel = p.id; page = 'Projects'; }
+    if (id) Object.assign(C.proj(state, id), v); else { const p = { id: C.uid(), invoices: [], ...v }; state.projects.push(p); go('Projects', p.id); }
     done('Project saved.');
   },
   invoice(f, form) {
@@ -358,20 +388,23 @@ function tryCommit(t) {
   save(); render(); toast('Committed for today.'); return true;
 }
 function exportData() { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' })); a.download = 'focus-backup-' + today() + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1500); }
-function replaceWith(next, msg) { state = next; C.autoClose(state); sel = null; save(); closeModal(); render(); toast(msg); }
+function replaceWith(next, msg) { state = next; C.autoClose(state); save(); if (sel) go(page, null, { replace: true }); closeModal(); render(); toast(msg); }
 
 const act = {
   close: closeModal,
-  more() { modal('More', `<div class="stack" style="margin-top:10px">${['Deadlines', 'Team', 'Review'].map(n => `<button data-nav="${n}">${n}</button>`).join('')}<button data-act="settings">Settings &amp; data</button>${$('#account') ? '<button data-act="open-account">Account &amp; sync</button>' : ''}</div><div class="sub" style="font-size:12px;margin-top:14px">Working as</div><select id="viewas-more" aria-label="Working as">${memberOpts(state.meId)}</select>`); },
+  more() { const I = window.focusInstall; modal('More', `<div class="stack" style="margin-top:12px">${['Deadlines', 'Team', 'Review'].map(n => `<button class="big" data-nav="${n}"><span>${label(n)}</span><i>›</i></button>`).join('')}<button class="big" data-act="settings"><span>Settings &amp; data</span><i>›</i></button>${$('#account') ? '<button class="big" data-act="open-account"><span>Account &amp; sync</span><i>›</i></button>' : ''}${I && I.can() ? '<button class="big lime" data-act="install-app"><span>Install Focus on this phone</span><i>↓</i></button>' : ''}</div><label class="field" style="margin-top:16px">Working as<select id="viewas-more">${memberOpts(state.meId)}</select></label>`); },
+  fab() { modal('Add', `<div class="stack" style="margin-top:12px"><button class="big primary" data-act="new-task"><span>New task</span><i>＋</i></button><button class="big" data-act="capture-open"><span>Capture to inbox</span><i>✎</i></button><button class="big" data-act="new-project"><span>New project</span><i>＋</i></button></div>`); },
+  'capture-open'() { captureModal(); },
+  'install-app'() { const I = window.focusInstall; if (I && I.native()) { closeModal(); I.prompt(); return; } modal('Install Focus', `<p class="sub" style="margin-top:8px">${I && I.ios ? 'Tap <b>Share</b> in Safari, then <b>Add to Home Screen</b>.' : 'Open your browser menu (⋮), then tap <b>Install app</b> or <b>Add to Home screen</b>.'}</p><p class="sub">Focus then opens full screen like any other app and works offline.</p><button class="primary" data-act="close" style="margin-top:8px">Got it</button>`); },
   'open-account'() { closeModal(); $('#account').click(); },
   'ask-yes'() { const f = pending; pending = null; closeModal(); if (f) f(); },
-  back() { sel = null; render(); },
+  back() { const st = history.state; if (st && st.n > 0 && !modalPushed) history.back(); else go('Projects'); },
   task(d) { taskForm(d.id); },
   'new-task'(d) { taskForm(null, d.pid ? { projectId: d.pid } : {}); },
   'new-project'() { projectForm(); },
   'edit-project'(d) { projectForm(d.id); },
-  'open-project'(d) { sel = d.id; page = 'Projects'; render(); window.scrollTo(0, 0); },
-  'del-project'(d) { ask('Delete this project and all of its tasks and invoices? Export a backup first if you might need them.', () => { state.tasks.filter(t => t.projectId === d.id).forEach(t => C.removeTask(state, t.id)); state.projects = state.projects.filter(p => p.id !== d.id); sel = null; save(); render(); toast('Project deleted.'); }, 'Delete'); },
+  'open-project'(d) { go('Projects', d.id); },
+  'del-project'(d) { ask('Delete this project and all of its tasks and invoices? Export a backup first if you might need them.', () => { state.tasks.filter(t => t.projectId === d.id).forEach(t => C.removeTask(state, t.id)); state.projects = state.projects.filter(p => p.id !== d.id); save(); go('Projects', null, { replace: true }); toast('Project deleted.'); }, 'Delete'); },
   'new-invoice'(d) { invoiceForm(d.pid); },
   'edit-invoice'(d) { invoiceForm(d.pid, d.iid); },
   'del-invoice'(d) { ask('Delete this invoice record?', () => { const p = C.proj(state, d.pid); p.invoices = p.invoices.filter(i => i.id !== d.iid); save(); render(); }, 'Delete'); },
@@ -402,7 +435,7 @@ const act = {
   'del-member'(d) { keepNames(); ask('Remove this person? Their tasks move to you.', () => { state.tasks.forEach(t => { if (t.owner === d.id) t.owner = state.meId === d.id ? state.members.find(m => m.id !== d.id).id : state.meId; }); state.members = state.members.filter(m => m.id !== d.id); if (state.meId === d.id) state.meId = state.members[0].id; save(); render(); settingsModal(); }, 'Remove'); },
   'load-demo'() { const go = () => { C.setToday(null); replaceWith(C.demo(), 'Sample data loaded.'); }; if (state.projects.length || state.tasks.length) ask('Replace your current workspace with example data? Export a backup first if you need it.', go, 'Replace'); else go(); },
   'clear-demo'() { replaceWith(C.blank(), 'Cleared. Add your first project.'); },
-  'import-v1'() { replaceWith(C.importV1(v1Blob()), 'Imported from Focus v1. Review your projects and set estimates.'); page = 'Projects'; render(); },
+  'import-v1'() { replaceWith(C.importV1(v1Blob()), 'Imported from Focus v1. Review your projects and set estimates.'); go('Projects'); },
   reset() { ask('Erase every project, task and record in this browser? This cannot be undone.', () => { lsDel(TKEY); timer = null; replaceWith(C.blank(), 'Workspace erased.'); }, 'Erase everything'); }
 };
 
@@ -456,7 +489,7 @@ forms.weekly = f => { state.reviews.push({ date: today(), note: f.get('note').tr
 
 /* ---------- events ---------- */
 document.addEventListener('click', e => {
-  const n = e.target.closest('[data-nav]'); if (n) { e.preventDefault(); closeModal(); page = n.dataset.nav; sel = null; render(); window.scrollTo(0, 0); return; }
+  const n = e.target.closest('[data-nav]'); if (n) { e.preventDefault(); closeModal(); go(n.dataset.nav); return; }
   const b = e.target.closest('[data-act]'); if (b && act[b.dataset.act]) { e.preventDefault(); act[b.dataset.act](b.dataset, b); return; }
   if (e.target === $('#modal')) closeModal();
 });
@@ -488,6 +521,9 @@ async function restoreFile(file) {
 /* ---------- boot ---------- */
 if (!loaded) save();
 try { const r = JSON.parse(lsGet(TKEY)); if (r && r.taskId && (r.running ? r.endAt > Date.now() - 3600e3 : true)) { timer = r; loop(); } } catch {}
-render();
-window.__focus = { get state() { return state; }, render, act, go: p => { page = p; render(); } };
+const bootAction = new URLSearchParams(location.search).get('action');
+{ const r = parseHash(); page = r.page; sel = r.sel && C.proj(state, r.sel) ? r.sel : null; try { history.replaceState({ n: 0 }, '', location.pathname + hashFor(page, sel)); } catch {} }
+render(); enter();
+if (bootAction) { try { history.replaceState(history.state, '', location.pathname + location.hash); } catch {} if (bootAction === 'new-task') taskForm(); else if (bootAction === 'capture') captureModal(); }
+window.__focus = { get state() { return state; }, render, act, go: p => go(p) };
 })();

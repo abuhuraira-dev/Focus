@@ -1,6 +1,10 @@
 const fs=require('node:fs'),path=require('node:path');const root=path.join(__dirname,'..');
 fs.rmSync(path.join(root,'dist'),{recursive:true,force:true});
 fs.cpSync(path.join(root,'public'),path.join(root,'dist'),{recursive:true});
+// Version the service worker by content so every deploy ships an update to installed phones.
+const crypto=require('node:crypto');
+const sig=crypto.createHash('sha1');['app.html','index.html','core.js','app.js','cloud.js','install.js','manifest.webmanifest','icon.svg'].forEach(f=>sig.update(fs.readFileSync(path.join(root,'public',f))));
+const swp=path.join(root,'dist','sw.js');fs.writeFileSync(swp,fs.readFileSync(swp,'utf8').replace("'focus-dev'","'focus-"+sig.digest('hex').slice(0,10)+"'"));
 // Single-file build: no server, no cloud sync. Opens from a USB stick or a static host.
 const pub=f=>fs.readFileSync(path.join(root,'public',f),'utf8');
 let html=pub('app.html')

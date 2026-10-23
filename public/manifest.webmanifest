@@ -2,12 +2,25 @@
  "id": "/",
  "name": "Focus: agency workspace",
  "short_name": "Focus",
- "start_url": "/app.html",
+ "description": "Pick three tasks a day, see which projects are at risk, and track commitments.",
+ "start_url": "/app.html?source=pwa",
  "scope": "/",
  "display": "standalone",
+ "display_override": [
+  "standalone",
+  "minimal-ui"
+ ],
+ "orientation": "any",
  "background_color": "#f6f6f0",
- "theme_color": "#242820",
- "description": "Pick three tasks a day, see which projects are at risk, and track commitments.",
+ "theme_color": "#f0f1e8",
+ "lang": "en",
+ "categories": [
+  "productivity",
+  "business"
+ ],
+ "launch_handler": {
+  "client_mode": "focus-existing"
+ },
  "icons": [
   {
    "src": "/icon.svg",
@@ -32,6 +45,32 @@
    "sizes": "512x512",
    "type": "image/png",
    "purpose": "maskable"
+  }
+ ],
+ "shortcuts": [
+  {
+   "name": "New task",
+   "short_name": "New task",
+   "url": "/app.html?action=new-task",
+   "icons": [
+    {
+     "src": "/icon-192.png",
+     "sizes": "192x192",
+     "type": "image/png"
+    }
+   ]
+  },
+  {
+   "name": "Capture",
+   "short_name": "Capture",
+   "url": "/app.html?action=capture",
+   "icons": [
+    {
+     "src": "/icon-192.png",
+     "sizes": "192x192",
+     "type": "image/png"
+    }
+   ]
   }
  ]
 }

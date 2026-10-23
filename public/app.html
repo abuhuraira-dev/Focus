@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#242820">
+<meta name="theme-color" content="#f0f1e8">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Focus"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="format-detection" content="telephone=no">
 <meta name="description" content="Focus: pick your three, see what is at risk, and keep your commitments. A workspace for agency owners and their teams.">
 <title>Focus · Agency workspace</title>
 <link rel="manifest" href="/manifest.webmanifest">
@@ -21,7 +22,7 @@ button:hover{filter:brightness(.96)}button:disabled{opacity:.5;cursor:not-allowe
 .textbtn{border:0;background:none;padding:4px 6px;min-height:0;color:var(--muted);font-size:12px}.textbtn:hover{color:var(--ink);filter:none;text-decoration:underline}
 .shell{display:grid;grid-template-columns:224px 1fr;min-height:100vh}
 aside{border-right:1px solid var(--line);padding:28px 18px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;background:var(--soft)}
-.brand{display:flex;align-items:center;gap:10px;font-size:26px;font-weight:750;letter-spacing:-1.2px;padding:0 10px 24px;color:var(--ink);text-decoration:none;min-height:44px}.brand .mark{width:34px;height:34px;flex-shrink:0}.brand i{font-style:normal;color:#6f8238}.brand:hover{opacity:.85}
+.brand{display:flex;align-items:center;gap:10px;font-size:26px;font-weight:750;letter-spacing:-1.2px;padding:0 10px 24px;color:var(--ink);text-decoration:none;min-height:44px}.brand .mark{width:34px;height:34px;flex-shrink:0}.brand i{font-style:normal;color:#8fb81f}.brand:hover{opacity:.85}
 nav button{width:100%;text-align:left;background:none;border:0;margin:2px 0;padding:11px 12px;color:#545a4a;display:flex;justify-content:space-between;align-items:center;border-radius:9px}
 nav button.active{background:var(--ink);color:#fff}
 nav .count{background:var(--lime);color:var(--ink);border-radius:20px;font-size:11px;font-weight:700;padding:1px 8px;min-width:22px;text-align:center}
@@ -122,16 +123,52 @@ pre.standup{white-space:pre-wrap;background:#fbfbf7;border:1px solid var(--line)
  .team-table thead{display:none}.team-table tr{display:block;border:1px solid var(--line);border-radius:12px;padding:6px 12px;margin-bottom:10px}.team-table td{display:flex;justify-content:space-between;gap:12px;border:0;padding:6px 0}.team-table td:first-child{font-size:15px}.team-table td:first-child::before{display:none}.team-table td::before{content:attr(data-l);color:var(--muted);font-size:12px}
 }
 @media (prefers-reduced-motion:no-preference){.card,.pcard{transition:border-color .15s}}
+
+/* ---- v2.1: native-feel navigation, install, phone polish ---- */
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:contain}
+button,a,select,summary{touch-action:manipulation}
+button{transition:transform .12s,background-color .15s,border-color .15s}
+button:active:not(:disabled){transform:scale(.97)}
+.big{width:100%;display:flex;justify-content:space-between;align-items:center;text-align:left;padding:14px 16px;font-size:15px;border-radius:12px;min-height:52px}.big i{font-style:normal;color:var(--muted);font-size:18px}.big.primary i{color:var(--lime)}.big.lime i{color:var(--ink)}
+.installbar{display:flex;align-items:center;gap:10px;background:var(--ink);color:#fff;border-radius:12px;padding:10px 12px 10px 14px;margin:0 0 14px;font-size:13px}.installbar span{flex:1;min-width:0}.installbar button{min-height:34px;padding:5px 12px;font-size:13px}.installbar .x{background:none;border:0;color:#c3cabb;font-size:20px;padding:0 6px;min-height:34px}
+#fab{display:none}
+@keyframes viewin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes sheetin{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:no-preference){#view.enter{animation:viewin .22s ease-out}dialog[open]{animation:fadein .15s ease-out}dialog::backdrop{animation:fadein .2s ease-out}}
+@media (display-mode:standalone){nav button,.brand,#bottomnav{-webkit-user-select:none;user-select:none}}
+@media(max-width:760px){
+ @media (prefers-reduced-motion:no-preference){dialog[open]{animation:sheetin .22s cubic-bezier(.2,.8,.2,1)}}
+ aside{padding-top:calc(8px + env(safe-area-inset-top))}
+ header{display:none}
+ main{padding-bottom:calc(150px + env(safe-area-inset-bottom))}
+ .bottom{margin-top:24px}
+ #bottomnav{grid-template-columns:repeat(5,1fr);box-shadow:0 -6px 24px #24282010;background:#ffffffee;backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px)}
+ #bottomnav button{min-height:56px;gap:3px;z-index:0}
+ #bottomnav button svg{position:relative;z-index:1}
+ #bottomnav button::before{content:"";position:absolute;top:6px;left:50%;width:56px;height:30px;margin-left:-28px;border-radius:16px;background:var(--lime);transform:scale(.4);opacity:0;transition:transform .2s cubic-bezier(.2,.8,.2,1),opacity .15s}
+ #bottomnav button.active::before{transform:none;opacity:1}
+ #bottomnav .count{z-index:2;left:calc(50% + 8px);top:3px}
+ #fab{display:flex;align-items:center;justify-content:center;position:fixed;right:max(16px,env(safe-area-inset-right));bottom:calc(76px + env(safe-area-inset-bottom));z-index:25;width:56px;height:56px;min-height:56px;padding:0;border-radius:18px;background:var(--ink);border:0;box-shadow:0 8px 22px #11111140}
+ #fab svg{width:26px;height:26px;stroke:var(--lime);stroke-width:2.6;stroke-linecap:round;fill:none}
+ .toast{bottom:calc(150px + env(safe-area-inset-bottom))}
+ .installbar{margin-top:2px}
+ .task input[type=checkbox]{width:22px;height:22px}
+}
+@media(min-width:761px) and (max-width:1100px){.pgrid{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}.hero h2{font-size:22px}}
+@media(max-width:380px){h1{font-size:23px}.stats{gap:8px}.stat strong{font-size:23px}.timer{font-size:48px}}
 </style>
 </head>
 <body>
 <div class="shell">
  <aside>
-  <a class="brand" href="#" data-nav="Today" aria-label="Focus, go to Today"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#242820"/><circle cx="32" cy="32" r="18" fill="none" stroke="#d8f36a" stroke-width="6" stroke-linecap="round" stroke-dasharray="94 19" transform="rotate(-60 32 32)"/><circle cx="32" cy="32" r="6" fill="#d8f36a"/></svg><span>focus<i>.</i></span></a>
+  <a class="brand" href="#" data-nav="Today" aria-label="Focus, go to Today"><svg class="mark" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#111"/><g fill="#f6f6f0"><path d="M118 237 C118 156 175 112 258 112 H365 C365 151 340 179 295 179 H231 C177 179 145 198 118 237 Z"/><path d="M118 376 V295 C118 241 157 210 214 210 H326 C326 252 299 277 253 277 H216 C170 277 153 313 153 345 C153 360 138 376 118 376 Z"/></g><circle cx="309" cy="353" r="32" fill="#d6ff4f"/></svg><span>focus<i>.</i></span></a>
   <nav id="nav" aria-label="Main"></nav>
   <div class="who"><label for="viewas">Working as</label><select id="viewas"></select><div style="margin-top:8px"><span id="sync-status">Saved on this browser</span></div></div>
  </aside>
  <main>
+  <div id="installbar" class="installbar" hidden></div>
   <header>
    <h2 class="crumb" id="crumb">Today</h2>
    <div class="header-actions">
@@ -147,6 +184,7 @@ pre.standup{white-space:pre-wrap;background:#fbfbf7;border:1px solid var(--line)
   <div class="bottom"><span>Payments are tracked manually. Focus sends no invoices, emails or reminders.</span></div>
  </main>
 </div>
+<button id="fab" data-act="fab" aria-label="Add task, capture or project"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
 <nav id="bottomnav" aria-label="Main"></nav>
 <dialog id="modal"></dialog>
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
